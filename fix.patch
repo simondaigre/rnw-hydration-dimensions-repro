@@ -1,0 +1,183 @@
+diff -ru a/dist/cjs/exports/useColorScheme/index.js b/dist/cjs/exports/useColorScheme/index.js
+--- a/dist/cjs/exports/useColorScheme/index.js
++++ b/dist/cjs/exports/useColorScheme/index.js
+@@ -17,18 +17,20 @@
+ exports.default = useColorScheme;
+ var React = _interopRequireWildcard(require("react"));
+ var _Appearance = _interopRequireDefault(require("../Appearance"));
++function subscribe(onStoreChange) {
++  return _Appearance.default.addChangeListener(onStoreChange).remove;
++}
++function getSnapshot() {
++  return _Appearance.default.getColorScheme();
++}
++
++// What a server renders with: it has no `prefers-color-scheme`. While hydrating
++// server-rendered HTML, the browser renders with it too, so that its first
++// render matches the HTML. React renders again with the user's right after.
++function getServerSnapshot() {
++  return 'light';
++}
+ function useColorScheme() {
+-  var _React$useState = React.useState(_Appearance.default.getColorScheme()),
+-    colorScheme = _React$useState[0],
+-    setColorScheme = _React$useState[1];
+-  React.useEffect(() => {
+-    function listener(appearance) {
+-      setColorScheme(appearance.colorScheme);
+-    }
+-    var _Appearance$addChange = _Appearance.default.addChangeListener(listener),
+-      remove = _Appearance$addChange.remove;
+-    return remove;
+-  }, []);
+-  return colorScheme;
++  return React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+ }
+ module.exports = exports.default;
+\ Pas de fin de ligne à la fin du fichier
+diff -ru a/dist/cjs/exports/useWindowDimensions/index.js b/dist/cjs/exports/useWindowDimensions/index.js
+--- a/dist/cjs/exports/useWindowDimensions/index.js
++++ b/dist/cjs/exports/useWindowDimensions/index.js
+@@ -15,27 +15,30 @@
+ exports.__esModule = true;
+ exports.default = useWindowDimensions;
+ var _Dimensions = _interopRequireDefault(require("../Dimensions"));
++var _canUseDom = _interopRequireDefault(require("../../modules/canUseDom"));
+ var _react = require("react");
++// What a server renders with, unless set with `Dimensions.set`: it has no window.
++var serverWindowDimensions = {
++  fontScale: 1,
++  height: 0,
++  scale: 1,
++  width: 0
++};
++function subscribe(onStoreChange) {
++  var subscription = _Dimensions.default.addEventListener('change', onStoreChange);
++  return () => subscription.remove();
++}
++function getSnapshot() {
++  return _Dimensions.default.get('window');
++}
++
++// While hydrating server-rendered HTML, the browser renders with the server's
++// dimensions, so that its first render matches the HTML. React renders again
++// with the window's right after.
++function getServerSnapshot() {
++  return _canUseDom.default ? serverWindowDimensions : _Dimensions.default.get('window');
++}
+ function useWindowDimensions() {
+-  var _useState = (0, _react.useState)(() => _Dimensions.default.get('window')),
+-    dims = _useState[0],
+-    setDims = _useState[1];
+-  (0, _react.useEffect)(() => {
+-    function handleChange(_ref) {
+-      var window = _ref.window;
+-      if (window != null) {
+-        setDims(window);
+-      }
+-    }
+-    _Dimensions.default.addEventListener('change', handleChange);
+-    // We might have missed an update between calling `get` in render and
+-    // `addEventListener` in this handler, so we set it here. If there was
+-    // no change, React will filter out this update as a no-op.
+-    setDims(_Dimensions.default.get('window'));
+-    return () => {
+-      _Dimensions.default.removeEventListener('change', handleChange);
+-    };
+-  }, []);
+-  return dims;
++  return (0, _react.useSyncExternalStore)(subscribe, getSnapshot, getServerSnapshot);
+ }
+ module.exports = exports.default;
+\ Pas de fin de ligne à la fin du fichier
+diff -ru a/dist/exports/useColorScheme/index.js b/dist/exports/useColorScheme/index.js
+--- a/dist/exports/useColorScheme/index.js
++++ b/dist/exports/useColorScheme/index.js
+@@ -12,17 +12,19 @@
+ 
+ import * as React from 'react';
+ import Appearance from '../Appearance';
++function subscribe(onStoreChange) {
++  return Appearance.addChangeListener(onStoreChange).remove;
++}
++function getSnapshot() {
++  return Appearance.getColorScheme();
++}
++
++// What a server renders with: it has no `prefers-color-scheme`. While hydrating
++// server-rendered HTML, the browser renders with it too, so that its first
++// render matches the HTML. React renders again with the user's right after.
++function getServerSnapshot() {
++  return 'light';
++}
+ export default function useColorScheme() {
+-  var _React$useState = React.useState(Appearance.getColorScheme()),
+-    colorScheme = _React$useState[0],
+-    setColorScheme = _React$useState[1];
+-  React.useEffect(() => {
+-    function listener(appearance) {
+-      setColorScheme(appearance.colorScheme);
+-    }
+-    var _Appearance$addChange = Appearance.addChangeListener(listener),
+-      remove = _Appearance$addChange.remove;
+-    return remove;
+-  }, []);
+-  return colorScheme;
++  return React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+ }
+\ Pas de fin de ligne à la fin du fichier
+diff -ru a/dist/exports/useWindowDimensions/index.js b/dist/exports/useWindowDimensions/index.js
+--- a/dist/exports/useWindowDimensions/index.js
++++ b/dist/exports/useWindowDimensions/index.js
+@@ -11,26 +11,29 @@
+ 'use client';
+ 
+ import Dimensions from '../Dimensions';
+-import { useEffect, useState } from 'react';
++import canUseDOM from '../../modules/canUseDom';
++import { useSyncExternalStore } from 'react';
++// What a server renders with, unless set with `Dimensions.set`: it has no window.
++var serverWindowDimensions = {
++  fontScale: 1,
++  height: 0,
++  scale: 1,
++  width: 0
++};
++function subscribe(onStoreChange) {
++  var subscription = Dimensions.addEventListener('change', onStoreChange);
++  return () => subscription.remove();
++}
++function getSnapshot() {
++  return Dimensions.get('window');
++}
++
++// While hydrating server-rendered HTML, the browser renders with the server's
++// dimensions, so that its first render matches the HTML. React renders again
++// with the window's right after.
++function getServerSnapshot() {
++  return canUseDOM ? serverWindowDimensions : Dimensions.get('window');
++}
+ export default function useWindowDimensions() {
+-  var _useState = useState(() => Dimensions.get('window')),
+-    dims = _useState[0],
+-    setDims = _useState[1];
+-  useEffect(() => {
+-    function handleChange(_ref) {
+-      var window = _ref.window;
+-      if (window != null) {
+-        setDims(window);
+-      }
+-    }
+-    Dimensions.addEventListener('change', handleChange);
+-    // We might have missed an update between calling `get` in render and
+-    // `addEventListener` in this handler, so we set it here. If there was
+-    // no change, React will filter out this update as a no-op.
+-    setDims(Dimensions.get('window'));
+-    return () => {
+-      Dimensions.removeEventListener('change', handleChange);
+-    };
+-  }, []);
+-  return dims;
++  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+ }
+\ Pas de fin de ligne à la fin du fichier
